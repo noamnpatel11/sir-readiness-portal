@@ -14,7 +14,6 @@ app.get('/', (req, res) => {
   res.send('SIR Readiness Portal Backend is running successfully!');
 });
 
-
 // --- CATEGORY ELIGIBILITY ENGINE ---
 app.get('/api/eligibility', (req, res) => {
   const dobParam = req.query.dob;
@@ -62,7 +61,8 @@ app.get('/api/eligibility', (req, res) => {
 
   res.json(responseData);
 });
-// The Main Analysis Engine
+
+// --- THE MAIN ANALYSIS ENGINE ---
 app.post('/analyze', (req, res) => {
   const { documentGrid } = req.body;
   
@@ -70,7 +70,8 @@ app.post('/analyze', (req, res) => {
     return res.status(400).json({ message: "Error: No data received.", errors: [] });
   }
 
-  const masterDoc = documentGrid.find(doc => doc.givenName !== "");
+  // Find the Master Document (the first row with a Given Name)
+  const masterDoc = documentGrid.find(doc => doc.givenName && doc.givenName.trim() !== "");
 
   if (!masterDoc) {
     return res.json({ message: "Error: Please fill in at least one Given Name to start the analysis.", errors: [] });
@@ -79,21 +80,26 @@ app.post('/analyze', (req, res) => {
   let discrepancies = [];
   let errorCells = []; 
 
-  documentGrid.forEach((doc, index) => {
-    if (doc.givenName !== "" && doc.docType !== masterDoc.docType) {
-      const similarityScore = stringSimilarity.compareTwoStrings(
-        masterDoc.givenName.toLowerCase(), 
-        doc.givenName.toLowerCase()
-      );
+  // 1. CROSS-CHECK ALL COLUMNS (Except 'Date Issued')
+  const fieldsToVerify = ['givenName', 'fatherName', 'motherName', 'spouseName', 'familyName', 'dob', 'place'];
 
-      if (similarityScore < 1) {
-        const matchPercent = Math.round(similarityScore * 100);
-        discrepancies.push(`${doc.docType} (${matchPercent}%)`);
-        errorCells.push({ rowIndex: index, field: 'givenName' });
+  documentGrid.forEach((doc, rowIndex) => {
+    fieldsToVerify.forEach(field => {
+      // If both the Master Document and the Current Document have data in this column...
+      if (masterDoc[field] && doc[field]) {
+        const masterVal = masterDoc[field].trim().toLowerCase();
+        const currentVal = doc[field].trim().toLowerCase();
+        
+        // If they don't match exactly, highlight the cell in red
+        if (masterVal !== currentVal) {
+          discrepancies.push(`${doc.docType} (${field})`);
+          errorCells.push({ rowIndex: rowIndex, field: field });
+        }
       }
-    }
+    });
   });
 
+  // 2. CHECK THE MOCK DATABASE (2002 & 2025)
   const checkDatabase = (databaseList, targetName) => {
     let isVerified = false;
     databaseList.forEach(record => {
@@ -108,13 +114,17 @@ app.post('/analyze', (req, res) => {
   const foundIn2002 = checkDatabase(voterList2002, masterDoc.givenName);
   const foundIn2025 = checkDatabase(voterList2025, masterDoc.givenName);
 
+  // 3. BUILD THE FINAL STATUS MESSAGE
   let finalMessage = "";
-  if (discrepancies.length === 0) {
-    finalMessage = `Success! All documents match. `;
+  if (errorCells.length === 0) {
+    finalMessage = `Success! All documents match perfectly. `;
   } else {
-    finalMessage = `WARNING - Mismatches found in: ${discrepancies.join(", ")}. `;
+    // Remove duplicates from the warning message for a cleaner UI reading
+    const uniqueDiscrepancies = [...new Set(discrepancies)];
+    finalMessage = `WARNING - Mismatches found in: ${uniqueDiscrepancies.join(", ")}. `;
   }
 
+  // Add the database status to the end of the message
   finalMessage += `| DB Status -> 2002 Voter List: [${foundIn2002 ? "VERIFIED" : "NOT FOUND"}] | 2025 Voter List: [${foundIn2025 ? "VERIFIED" : "NOT FOUND"}]`;
 
   res.json({ message: finalMessage, errors: errorCells });

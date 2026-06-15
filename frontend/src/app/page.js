@@ -9,13 +9,13 @@ export default function Home() {
 
   // --- PART 2: THE DOCUMENT LEDGER STATE ---
   const initialDocuments = [
-    { docType: "Birth Certificate", certNo: "", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "10th Marks Card", certNo: "", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "12th Marks Card", certNo: "", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "Voter ID", certNo: "", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "Aadhar Card", certNo: "", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "PAN Card", certNo: "", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "Passport", certNo: "", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" }
+    { docType: "Birth Certificate", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
+    { docType: "10th Marks Card", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
+    { docType: "12th Marks Card", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
+    { docType: "Voter ID", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
+    { docType: "Aadhar Card", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
+    { docType: "PAN Card", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
+    { docType: "Passport", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" }
   ];
 
   const [documents, setDocuments] = useState(initialDocuments);
@@ -29,7 +29,6 @@ export default function Home() {
     setEligibilityLoading(true);
     
     try {
-      // NOTE: Make sure your server.js still has the /api/eligibility route!
       const res = await fetch(`https://sir-readiness-portal.onrender.com/api/eligibility?dob=${dobInput}`);
       if (res.ok) {
         const data = await res.json();
@@ -47,6 +46,7 @@ export default function Home() {
     const updatedDocs = [...documents];
     updatedDocs[rowIndex][fieldName] = value;
     setDocuments(updatedDocs);
+    // Clear error for this specific cell when user types
     setErrors(errors.filter(err => !(err.rowIndex === rowIndex && err.field === fieldName)));
   };
 
@@ -98,7 +98,7 @@ export default function Home() {
           <div className="mt-6 p-5 bg-slate-950 rounded-lg border border-blue-900">
             <h3 className="text-lg font-bold text-blue-400 mb-2">{eligibilityResult.category}</h3>
             <p className="text-sm text-slate-300 mb-3">{eligibilityResult.message}</p>
-            <ul className="grid grid-cols-2 gap-2 text-sm text-slate-300">
+            <ul className="grid grid-cols-1 gap-2 text-sm text-slate-300">
               {eligibilityResult.missingDocs?.map((doc, idx) => (
                 <li key={idx}><span className="text-blue-500 mr-2">▹</span>{doc}</li>
               ))}
@@ -108,37 +108,47 @@ export default function Home() {
       </div>
 
       {/* SECTION 2: Document Master Ledger */}
-      <div className="bg-white text-black p-6 rounded-lg shadow-xl max-w-[100%] overflow-x-auto border border-slate-300">
+      <div className="bg-white text-black p-6 rounded-lg shadow-xl w-full overflow-x-auto border border-slate-300">
         <h2 className="text-xl font-semibold mb-4">Step 2: Document Master Ledger Validation</h2>
         
-        <table className="w-full text-left border-collapse whitespace-nowrap">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border p-2">Document Type</th>
-              <th className="border p-2">Given Name</th>
-              <th className="border p-2">Father Name</th>
-              <th className="border p-2">Mother Name</th>
-              <th className="border p-2">Spouse Name</th>
-              <th className="border p-2">Family Name</th>
-            </tr>
-          </thead>
-          <tbody>
-            {documents.map((doc, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="border p-2 font-medium bg-gray-100">{doc.docType}</td>
-                <td className="border p-0">
-                  <input type="text" 
-                    className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'givenName') ? 'bg-red-200 border-2 border-red-500 text-red-900 font-bold' : 'focus:bg-blue-50'}`} 
-                    value={doc.givenName} onChange={(e) => handleInputChange(index, 'givenName', e.target.value)} />
-                </td>
-                <td className="border p-0"><input type="text" className="w-full h-full p-2 outline-none focus:bg-blue-50" value={doc.fatherName} onChange={(e) => handleInputChange(index, 'fatherName', e.target.value)} /></td>
-                <td className="border p-0"><input type="text" className="w-full h-full p-2 outline-none focus:bg-blue-50" value={doc.motherName} onChange={(e) => handleInputChange(index, 'motherName', e.target.value)} /></td>
-                <td className="border p-0"><input type="text" className="w-full h-full p-2 outline-none focus:bg-blue-50" value={doc.spouseName} onChange={(e) => handleInputChange(index, 'spouseName', e.target.value)} /></td>
-                <td className="border p-0"><input type="text" className="w-full h-full p-2 outline-none focus:bg-blue-50" value={doc.familyName} onChange={(e) => handleInputChange(index, 'familyName', e.target.value)} /></td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse whitespace-nowrap text-sm">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border p-2">Document Type</th>
+                <th className="border p-2">Given Name</th>
+                <th className="border p-2">Father Name</th>
+                <th className="border p-2">Mother Name</th>
+                <th className="border p-2">Spouse Name</th>
+                <th className="border p-2">Family Name</th>
+                <th className="border p-2 bg-blue-100">DOB</th>
+                <th className="border p-2 bg-blue-100">Place of Birth</th>
+                <th className="border p-2 bg-blue-100">Date Issued</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {documents.map((doc, index) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="border p-2 font-medium bg-gray-100">{doc.docType}</td>
+                  
+                  {/* Name Fields */}
+                  <td className="border p-0">
+                    <input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'givenName') ? 'bg-red-200 border-2 border-red-500 text-red-900 font-bold' : 'focus:bg-blue-50'}`} value={doc.givenName} onChange={(e) => handleInputChange(index, 'givenName', e.target.value)} />
+                  </td>
+                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'fatherName') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.fatherName} onChange={(e) => handleInputChange(index, 'fatherName', e.target.value)} /></td>
+                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'motherName') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.motherName} onChange={(e) => handleInputChange(index, 'motherName', e.target.value)} /></td>
+                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'spouseName') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.spouseName} onChange={(e) => handleInputChange(index, 'spouseName', e.target.value)} /></td>
+                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'familyName') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.familyName} onChange={(e) => handleInputChange(index, 'familyName', e.target.value)} /></td>
+                  
+                  {/* New Columns */}
+                  <td className="border p-0"><input type="date" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'dob') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.dob} onChange={(e) => handleInputChange(index, 'dob', e.target.value)} /></td>
+                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'place') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.place} onChange={(e) => handleInputChange(index, 'place', e.target.value)} /></td>
+                  <td className="border p-0"><input type="date" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'dated') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.dated} onChange={(e) => handleInputChange(index, 'dated', e.target.value)} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <button onClick={handleAnalyzeClick} className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition-colors">
           Analyze Grid for Discrepancies
