@@ -1,4 +1,5 @@
 const express = require('express');
+const stringSimilarity = require('string-similarity');
 const cors = require('cors');
 
 const app = express();
@@ -61,19 +62,45 @@ app.get('/api/eligibility', (req, res) => {
 
 // This route catches the POST request from your Next.js frontend
 app.post('/analyze', (req, res) => {
-  // 1. Unpack the data sent from the frontend
-  const { individualName, fatherName, motherName, isMarried, spouseName, familyName, dob } = req.body;
+  // 1. Unpack the grid sent from the frontend
+  const { documentGrid } = req.body;
   
-  // 2. Log it to the Render console to prove it arrived
-  console.log("Data received from frontend:", req.body);
+  // 2. Find the "Master Document" (The first row where the user typed a Given Name)
+  const masterDoc = documentGrid.find(doc => doc.givenName !== "");
 
-  // 3. (Future Step) Here is where we will put your uncle's spelling mismatch logic!
-  
-  // 4. Send a success message back to the frontend
-  res.json({ 
-    status: "success",
-    message: `Backend successfully received data for ${individualName} ${familyName}! The spelling analyzer logic is ready to be built.`
+  // If they clicked analyze but didn't type anything, tell them to stop!
+  if (!masterDoc) {
+    return res.json({ message: "Error: Please fill in at least one Given Name to start the analysis." });
+  }
+
+  // 3. This array will hold all the spelling mistakes we find
+  let discrepancies = [];
+
+  // 4. Compare every row against the Master Document
+  documentGrid.forEach((doc) => {
+    // Only check rows where they actually typed a name, and don't compare the master to itself!
+    if (doc.givenName !== "" && doc.docType !== masterDoc.docType) {
+      
+      // Calculate how similar the names are (returns a number between 0 and 1)
+      const similarityScore = stringSimilarity.compareTwoStrings(
+        masterDoc.givenName.toLowerCase(), 
+        doc.givenName.toLowerCase()
+      );
+
+      // If it is NOT a perfect 1.0 (100% match), flag it!
+      if (similarityScore < 1) {
+        const matchPercent = Math.round(similarityScore * 100);
+        discrepancies.push(`Spelling mismatch in ${doc.docType}: '${doc.givenName}' is only a ${matchPercent}% match to Master ('${masterDoc.givenName}')`);
+      }
+    }
   });
+
+  // 5. Send the final report back to the frontend
+  if (discrepancies.length === 0) {
+    res.json({ message: `Success! All documents perfectly match the Master (${masterDoc.docType}).` });
+  } else {
+    res.json({ message: `WARNING - ${discrepancies.join(" | ")}` });
+  }
 });
 
 app.listen(PORT, () => {
