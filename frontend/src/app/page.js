@@ -2,96 +2,109 @@
 import { useState } from 'react';
 
 export default function Home() {
+  // 1. THE MEMORY: We tell React to create a "save slot" for each box
+  const [name, setName] = useState('');
+  const [fatherName, setFatherName] = useState('');
+  const [motherName, setMotherName] = useState('');
+  const [isMarried, setIsMarried] = useState(false);
+  const [spouseName, setSpouseName] = useState('');
+  const [familyName, setFamilyName] = useState('');
   const [dob, setDob] = useState('');
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  
+  // This will store the message we show after clicking the button
+  const [resultMessage, setResultMessage] = useState('');
 
-  const checkEligibility = async (e) => {
-    e.preventDefault();
-    if (!dob) return;
-    
-    setLoading(true);
-    setError('');
-    setResult(null);
-
-    try {
-      // Connects directly to the backend server running on Port 5000
-      const res = await fetch(`https://sir-readiness-portal.onrender.com/api/eligibility?dob=${dob}`);
-      if (!res.ok) {
-        throw new Error('Failed to get information from backend');
-      }
-      const data = await res.json();
-      setResult(data);
-    } catch (err) {
-      setError('Could not connect to the backend server. Make sure your backend terminal is running on port 5000!');
-    } finally {
-      setLoading(false);
+  // 2. THE ACTION: What happens when the button is clicked
+  const handleAnalyzeClick = () => {
+    // For now, let's just prove the app is reading the data!
+    if (!name || !familyName) {
+      setResultMessage("Please fill in at least your Individual Name and Family Name!");
+    } else {
+      setResultMessage(`Awesome! The system successfully captured the data for ${name} ${familyName}. We are ready for Step 3!`);
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6">
-      <div className="bg-slate-800 p-8 rounded-xl shadow-2xl max-w-md w-full border border-slate-700">
-        <h1 className="text-3xl font-extrabold text-center mb-2 tracking-tight text-blue-400">
-          SIR Portal
-        </h1>
-        <p className="text-slate-400 text-sm text-center mb-8">
-          Verify your document criteria instantly based on your age classification category.
-        </p>
+    <main className="p-8 max-w-2xl mx-auto font-sans">
+      <h1 className="text-3xl font-bold mb-6 text-gray-100">SIR Readiness Portal</h1>
+      
+      <div className="flex flex-col gap-4 border border-gray-200 p-6 rounded-lg shadow-md bg-white">
+        <h2 className="text-xl font-semibold mb-2 text-gray-800">Enter Your Details</h2>
         
-        <form onSubmit={checkEligibility} className="space-y-5">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-              Select Date of Birth
-            </label>
-            <input 
-              type="date" 
-              value={dob} 
-              onChange={(e) => setDob(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-              required
-            />
-          </div>
-          
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white font-semibold py-3 px-4 rounded-lg transition"
-          >
-            {loading ? 'Processing System Logic...' : 'Analyze Status Requirements'}
-          </button>
-        </form>
-
-        {error && (
-          <div className="mt-6 p-4 bg-red-950/50 border border-red-800 text-red-200 rounded-lg text-sm text-center">
-            {error}
-          </div>
+        {/* 3. WIRING IT UP: We connect each input to its specific "memory" slot */}
+        <input 
+          type="text" 
+          placeholder="01. Individual Name" 
+          className="border border-gray-300 p-2 rounded text-black"
+          value={name}
+          onChange={(e) => setName(e.target.value)} 
+        />
+        <input 
+          type="text" 
+          placeholder="02. Father Name" 
+          className="border border-gray-300 p-2 rounded text-black"
+          value={fatherName}
+          onChange={(e) => setFatherName(e.target.value)} 
+        />
+        <input 
+          type="text" 
+          placeholder="03. Mother Name" 
+          className="border border-gray-300 p-2 rounded text-black"
+          value={motherName}
+          onChange={(e) => setMotherName(e.target.value)} 
+        />
+        
+        <label className="flex items-center gap-2 mt-2 text-gray-700">
+          <input 
+            type="checkbox" 
+            className="w-4 h-4"
+            checked={isMarried}
+            onChange={(e) => setIsMarried(e.target.checked)}
+          />
+          I am married (Check to add spouse)
+        </label>
+        
+        {/* If 'isMarried' is true, show this box. If false, hide it! */}
+        {isMarried && (
+          <input 
+            type="text" 
+            placeholder="04. Spouse Name" 
+            className="border border-gray-300 p-2 rounded text-black"
+            value={spouseName}
+            onChange={(e) => setSpouseName(e.target.value)} 
+          />
         )}
 
-        {result && (
-          <div className="mt-8 p-5 bg-slate-950 rounded-lg border border-blue-900">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-bold text-blue-400">{result.category}</h2>
-              <span className="px-2.5 py-0.5 bg-blue-900/50 text-blue-300 rounded-full text-xs font-medium border border-blue-700">
-                Active Rule
-              </span>
-            </div>
-            <p className="text-sm text-slate-300 mb-4 leading-relaxed">{result.message}</p>
-            
-            <div className="h-px bg-slate-800 my-4" />
-            
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Required Documents Blueprint:
-            </div>
-            <ul className="space-y-2">
-              {result.missingDocs.map((doc, idx) => (
-                <li key={idx} className="flex items-center text-sm text-slate-300">
-                  <span className="mr-2 text-blue-500">▹</span>
-                  {doc}
-                </li>
-              ))}
-            </ul>
+        <input 
+          type="text" 
+          placeholder="05. Family Name (Surname)" 
+          className="border border-gray-300 p-2 rounded mt-2 text-black"
+          value={familyName}
+          onChange={(e) => setFamilyName(e.target.value)} 
+        />
+        
+        <div className="flex flex-col">
+          <label className="text-sm text-gray-600 mb-1">06. Date of Birth</label>
+          <input 
+            type="date" 
+            className="border border-gray-300 p-2 rounded text-black"
+            value={dob}
+            onChange={(e) => setDob(e.target.value)} 
+          />
+        </div>
+
+        {/* We connect the button to our action function */}
+        <button 
+          onClick={handleAnalyzeClick}
+          className="bg-blue-600 text-white p-3 rounded mt-4 font-bold hover:bg-blue-700 transition-colors"
+        >
+          Analyze Details
+        </button>
+
+        {/* This is where our success message will pop up */}
+        {resultMessage && (
+          <div className="mt-4 p-4 bg-green-100 text-green-800 border border-green-300 rounded font-medium">
+            {resultMessage}
           </div>
         )}
       </div>

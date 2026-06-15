@@ -59,6 +59,23 @@ app.get('/api/eligibility', (req, res) => {
   }
 });
 
+// This route catches the POST request from your Next.js frontend
+app.post('/analyze', (req, res) => {
+  // 1. Unpack the data sent from the frontend
+  const { individualName, fatherName, motherName, isMarried, spouseName, familyName, dob } = req.body;
+  
+  // 2. Log it to the Render console to prove it arrived
+  console.log("Data received from frontend:", req.body);
+
+  // 3. (Future Step) Here is where we will put your uncle's spelling mismatch logic!
+  
+  // 4. Send a success message back to the frontend
+  res.json({ 
+    status: "success",
+    message: `Backend successfully received data for ${individualName} ${familyName}! The spelling analyzer logic is ready to be built.`
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Success! Server is listening on port ${PORT}`);
 });
