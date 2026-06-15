@@ -14,6 +14,44 @@ app.get('/', (req, res) => {
   res.send('SIR Readiness Portal Backend is running successfully!');
 });
 
+
+// --- CATEGORY ELIGIBILITY ENGINE ---
+app.get('/api/eligibility', (req, res) => {
+  const dobParam = req.query.dob;
+  
+  if (!dobParam) {
+    return res.status(400).json({ error: "Date of birth is required" });
+  }
+
+  // Calculate applicant age
+  const dob = new Date(dobParam);
+  const ageDiffMs = Date.now() - dob.getTime();
+  const ageDate = new Date(ageDiffMs);
+  const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+
+  // Define Blueprint Logic
+  let responseData = {
+    category: "",
+    message: "",
+    missingDocs: []
+  };
+
+  if (age < 18) {
+    responseData.category = "Minor Applicant (Under 18)";
+    responseData.message = "As a minor applicant, your verification requires parent-linked identity documentation.";
+    responseData.missingDocs = ["Birth Certificate", "Father/Mother Identity Proof", "10th Marks Card (if applicable)"];
+  } else if (age >= 18 && age < 60) {
+    responseData.category = "Standard Adult Applicant (18-59)";
+    responseData.message = "Standard administrative verification blueprint applies. Comprehensive identity and address proofs required.";
+    responseData.missingDocs = ["Voter ID", "Aadhar Card", "PAN Card", "10th/12th Marks Card"];
+  } else {
+    responseData.category = "Senior Citizen Applicant (60+)";
+    responseData.message = "Senior citizen blueprint activated. Historical records and age-concession proofs prioritized.";
+    responseData.missingDocs = ["Voter ID", "Aadhar Card", "PAN / Pension Document"];
+  }
+
+  res.json(responseData);
+});
 // The Main Analysis Engine
 app.post('/analyze', (req, res) => {
   const { documentGrid } = req.body;
