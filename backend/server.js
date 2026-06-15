@@ -23,31 +23,41 @@ app.get('/api/eligibility', (req, res) => {
     return res.status(400).json({ error: "Date of birth is required" });
   }
 
-  // Calculate applicant age
+  // Parse the input Date of Birth
   const dob = new Date(dobParam);
-  const ageDiffMs = Date.now() - dob.getTime();
-  const ageDate = new Date(ageDiffMs);
-  const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+  
+  // Define Government Cut-off Dates
+  const date1987 = new Date('1987-07-01');
+  const date2004 = new Date('2004-12-02');
 
-  // Define Blueprint Logic
   let responseData = {
     category: "",
     message: "",
     missingDocs: []
   };
 
-  if (age < 18) {
-    responseData.category = "Minor Applicant (Under 18)";
-    responseData.message = "As a minor applicant, your verification requires parent-linked identity documentation.";
-    responseData.missingDocs = ["Birth Certificate", "Father/Mother Identity Proof", "10th Marks Card (if applicable)"];
-  } else if (age >= 18 && age < 60) {
-    responseData.category = "Standard Adult Applicant (18-59)";
-    responseData.message = "Standard administrative verification blueprint applies. Comprehensive identity and address proofs required.";
-    responseData.missingDocs = ["Voter ID", "Aadhar Card", "PAN Card", "10th/12th Marks Card"];
+  // Implement Official SIR Rules
+  if (dob < date1987) {
+    responseData.category = "Born before 01.07.1987";
+    responseData.message = "Pursuant to official SIR guidelines, you are required to establish your date of birth and/or place of birth.";
+    responseData.missingDocs = [
+      "Any valid document for Self (establishing DOB/Place of Birth)"
+    ];
+  } else if (dob >= date1987 && dob <= date2004) {
+    responseData.category = "Born between 01.07.1987 and 02.12.2004";
+    responseData.message = "Pursuant to official SIR guidelines, you must establish the birth details for yourself and ONE parent.";
+    responseData.missingDocs = [
+      "Valid document for Self (establishing DOB/Place of Birth)",
+      "Valid document for Father OR Mother (establishing DOB/Place of Birth)"
+    ];
   } else {
-    responseData.category = "Senior Citizen Applicant (60+)";
-    responseData.message = "Senior citizen blueprint activated. Historical records and age-concession proofs prioritized.";
-    responseData.missingDocs = ["Voter ID", "Aadhar Card", "PAN / Pension Document"];
+    responseData.category = "Born after 02.12.2004";
+    responseData.message = "Pursuant to official SIR guidelines, you must establish the birth details for yourself and BOTH parents.";
+    responseData.missingDocs = [
+      "Valid document for Self (establishing DOB/Place of Birth)",
+      "Valid document for Father (establishing DOB/Place of Birth)",
+      "Valid document for Mother (establishing DOB/Place of Birth)"
+    ];
   }
 
   res.json(responseData);
