@@ -127,7 +127,6 @@ app.post('/analyze', (req, res) => {
   } else {
     res.json({ message: `WARNING - ${discrepancies.join(" | ")}` });
   }
-});
 
 app.listen(PORT, () => {
   console.log(`Success! Server is listening on port ${PORT}`);
