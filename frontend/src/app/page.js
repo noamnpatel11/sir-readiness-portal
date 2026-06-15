@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
   // --- PART 1: THE CATEGORY CHECKER STATE ---
@@ -21,6 +21,35 @@ export default function Home() {
   const [documents, setDocuments] = useState(initialDocuments);
   const [resultMessage, setResultMessage] = useState("");
   const [errors, setErrors] = useState([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // --- OPTION C: SAVE & RESUME LOGIC (LOCAL STORAGE) ---
+  
+  // 1. When the page loads, check if we have saved data in the browser memory
+  useEffect(() => {
+    const savedDocs = localStorage.getItem('sirPortalDocs');
+    if (savedDocs) {
+      setDocuments(JSON.parse(savedDocs));
+    }
+    setIsLoaded(true); // Prevents hydration mismatch
+  }, []);
+
+  // 2. Every time 'documents' changes, save the new data secretly to the browser
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('sirPortalDocs', JSON.stringify(documents));
+    }
+  }, [documents, isLoaded]);
+
+  // 3. Function to wipe the memory
+  const handleClearData = () => {
+    if (window.confirm("Are you sure you want to clear all typed data?")) {
+      setDocuments(initialDocuments);
+      setResultMessage("");
+      setErrors([]);
+      localStorage.removeItem('sirPortalDocs');
+    }
+  };
 
   // --- LOGIC 1: FETCH CATEGORY ELIGIBILITY ---
   const checkEligibility = async (e) => {
@@ -46,7 +75,6 @@ export default function Home() {
     const updatedDocs = [...documents];
     updatedDocs[rowIndex][fieldName] = value;
     setDocuments(updatedDocs);
-    // Clear error for this specific cell when user types
     setErrors(errors.filter(err => !(err.rowIndex === rowIndex && err.field === fieldName)));
   };
 
@@ -74,6 +102,9 @@ export default function Home() {
       setResultMessage("Error: Could not establish a connection to the backend server.");
     }
   };
+
+  // Prevent UI flashing during local storage load
+  if (!isLoaded) return <div className="min-h-screen bg-slate-900"></div>;
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-8 font-sans">
@@ -109,7 +140,12 @@ export default function Home() {
 
       {/* SECTION 2: Document Master Ledger */}
       <div className="bg-white text-black p-6 rounded-lg shadow-xl w-full overflow-x-auto border border-slate-300">
-        <h2 className="text-xl font-semibold mb-4">Step 2: Document Master Ledger Validation</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Step 2: Document Master Ledger Validation</h2>
+          <button onClick={handleClearData} className="text-sm bg-red-100 hover:bg-red-200 text-red-700 py-1 px-3 rounded border border-red-300 transition-colors">
+            Clear Saved Data
+          </button>
+        </div>
         
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap text-sm">
@@ -140,7 +176,7 @@ export default function Home() {
                   <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'spouseName') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.spouseName} onChange={(e) => handleInputChange(index, 'spouseName', e.target.value)} /></td>
                   <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'familyName') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.familyName} onChange={(e) => handleInputChange(index, 'familyName', e.target.value)} /></td>
                   
-                  {/* New Columns */}
+                  {/* Additional Columns */}
                   <td className="border p-0"><input type="date" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'dob') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.dob} onChange={(e) => handleInputChange(index, 'dob', e.target.value)} /></td>
                   <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'place') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.place} onChange={(e) => handleInputChange(index, 'place', e.target.value)} /></td>
                   <td className="border p-0"><input type="date" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'dated') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.dated} onChange={(e) => handleInputChange(index, 'dated', e.target.value)} /></td>
