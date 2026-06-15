@@ -62,16 +62,42 @@ app.get('/api/eligibility', (req, res) => {
 
 // This route catches the POST request from your Next.js frontend
 app.post('/analyze', (req, res) => {
-  // 1. Unpack the grid sent from the frontend
   const { documentGrid } = req.body;
   
-  // 2. Find the "Master Document" (The first row where the user typed a Given Name)
   const masterDoc = documentGrid.find(doc => doc.givenName !== "");
 
-  // If they clicked analyze but didn't type anything, tell them to stop!
   if (!masterDoc) {
-    return res.json({ message: "Error: Please fill in at least one Given Name to start the analysis." });
+    return res.json({ message: "Error: Please fill in at least one Given Name to start the analysis.", errors: [] });
   }
+
+  let discrepancies = [];
+  let errorCells = []; // NEW: This will store the exact coordinates of the mistakes
+
+  // We added 'index' here so we know exactly which row we are looking at
+  documentGrid.forEach((doc, index) => {
+    if (doc.givenName !== "" && doc.docType !== masterDoc.docType) {
+      
+      const similarityScore = stringSimilarity.compareTwoStrings(
+        masterDoc.givenName.toLowerCase(), 
+        doc.givenName.toLowerCase()
+      );
+
+      if (similarityScore < 1) {
+        const matchPercent = Math.round(similarityScore * 100);
+        discrepancies.push(`${doc.docType} (${matchPercent}%)`);
+        
+        // NEW: Tell the frontend EXACTLY where the error is (Row Number, Column Name)
+        errorCells.push({ rowIndex: index, field: 'givenName' });
+      }
+    }
+  });
+
+  if (discrepancies.length === 0) {
+    res.json({ message: `Success! All documents match the Master (${masterDoc.docType}).`, errors: [] });
+  } else {
+    res.json({ message: `WARNING - Mismatches found in: ${discrepancies.join(", ")}`, errors: errorCells });
+  }
+});
 
   // 3. This array will hold all the spelling mistakes we find
   let discrepancies = [];
