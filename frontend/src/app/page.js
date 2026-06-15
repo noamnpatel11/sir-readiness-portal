@@ -17,7 +17,7 @@ export default function Home() {
 
     try {
       // Connects directly to the backend server running on Port 5000
-      const res = await fetch(`http://localhost:5000/api/eligibility?dob=${dob}`);
+      const res = await fetch(`http://https://sir-readiness-portal.onrender.com/api/eligibility?dob=${dob}`);
       if (!res.ok) {
         throw new Error('Failed to get information from backend');
       }
