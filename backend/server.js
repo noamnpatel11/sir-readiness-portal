@@ -58,21 +58,22 @@ app.get('/api/eligibility', (req, res) => {
 });
 
 // ==========================================
-// 3. GRID ANALYSIS ENGINE (TYPO CHECKER)
+// 3. GRID ANALYSIS ENGINE (FIXED LOGIC)
 // ==========================================
 app.post('/analyze', (req, res) => {
-  const { documentGrid } = req.body;
+  // Extract BOTH the document grid and the specific master index from frontend
+  const { documentGrid, masterIndex } = req.body;
   
   if (!documentGrid) {
     return res.status(400).json({ message: "Error: No data received.", errors: [] });
   }
 
-  // Find the Master Document
-  const masterDoc = documentGrid.find(doc => doc.givenName && doc.givenName.trim() !== "");
-
-  if (!masterDoc) {
-    return res.json({ message: "Error: Please fill in at least one Given Name to start the analysis.", errors: [] });
+  if (masterIndex === undefined || masterIndex === null) {
+    return res.status(400).json({ message: "Error: No Master Document selected.", errors: [] });
   }
+
+  // Force the Master Document to be the exact row selected on the frontend
+  const masterDoc = documentGrid[masterIndex];
 
   let discrepancies = [];
   let errorCells = []; 
@@ -80,6 +81,13 @@ app.post('/analyze', (req, res) => {
 
   // Check rows for typos against the master row
   documentGrid.forEach((doc, rowIndex) => {
+    // Skip comparing the master document to itself
+    if (rowIndex === masterIndex) return;
+
+    // Skip completely empty rows
+    const hasData = Object.values(doc).some(val => val !== "" && val !== doc.docType);
+    if (!hasData) return;
+
     fieldsToVerify.forEach(field => {
       if (masterDoc[field] && doc[field]) {
         const masterVal = masterDoc[field].trim().toLowerCase();
@@ -95,10 +103,10 @@ app.post('/analyze', (req, res) => {
 
   let finalMessage = "";
   if (errorCells.length === 0) {
-    finalMessage = `Success! All documents match perfectly.`;
+    finalMessage = `Success! All documents match perfectly against ${masterDoc.docType}.`;
   } else {
     const uniqueDiscrepancies = [...new Set(discrepancies)];
-    finalMessage = `WARNING - Mismatches found in: ${uniqueDiscrepancies.join(", ")}.`;
+    finalMessage = `WARNING - Mismatches found against ${masterDoc.docType} in: ${uniqueDiscrepancies.join(", ")}.`;
   }
 
   res.json({ message: finalMessage, errors: errorCells });
