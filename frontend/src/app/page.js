@@ -144,7 +144,7 @@ export default function Home() {
   // --- UPDATED: Handle Master Selection with Forced Wipe ---
   const handleMasterSelection = (index) => {
     setMasterDocIndex(index);
-    setErrors([]); // Explicitly wipe errors
+    setErrors([]); 
     setResultMessage("⚠️ Master Document changed. Please click 'Run Deep Grid Analysis' again to generate a new report.");
   };
 
