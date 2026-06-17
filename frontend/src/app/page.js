@@ -145,7 +145,7 @@ export default function Home() {
   const handleMasterSelection = (index) => {
     setMasterDocIndex(index);
     setErrors([]); 
-    setResultMessage("⚠️ Master Document changed. Please click 'Run Deep Grid Analysis' to generate a new report.");
+    setResultMessage(`⚠️ Master Document changed to '${documents[index].docType}'. Please click 'Run Deep Grid Analysis' to generate a new report.`);
   };
 
   const isErrorCell = (rowIndex, fieldName) => errors.some(err => err.rowIndex === rowIndex && err.field === fieldName);
@@ -155,10 +155,12 @@ export default function Home() {
       setResultMessage("WARNING: Please select a Master Document using the radio buttons on the left before analyzing.");
       return;
     }
-    setResultMessage("Transmitting data grid to server...");
+
+    const selectedMasterName = documents[masterDocIndex].docType;
+    setResultMessage(`Transmitting data grid to server (Master: ${selectedMasterName})...`);
     setErrors([]); 
+    
     try {
-      // Adding ?t=${Date.now()} forces the server to not cache the response
       const response = await fetch(`${BACKEND_URL}/analyze?t=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -238,6 +240,19 @@ export default function Home() {
                 {eligibilityLoading ? 'Checking...' : 'Check Status'}
               </button>
             </form>
+
+            {dobInput && (
+              <div className="hidden print:block text-xs text-slate-700 mb-2">
+                <strong>Applicant Date of Birth:</strong> {dobInput}
+              </div>
+            )}
+
+            {eligibilityResult && (
+              <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200 print:mt-2 print:p-3 print:bg-white print:border-slate-300">
+                <h3 className="text-xl font-semibold text-blue-700 mb-2 print:text-xs print:text-blue-900">{eligibilityResult.category}</h3>
+                <p className="text-slate-600 mb-5 leading-relaxed print:text-xs print:mb-2">{eligibilityResult.message}</p>
+              </div>
+            )}
           </div>
 
           <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 max-w-4xl mx-auto mb-12 print:shadow-none print:border-none print:p-0 print:mb-4">
@@ -249,6 +264,32 @@ export default function Home() {
                     {isSearchLoading ? 'Scanning...' : 'Search Database'}
                 </button>
             </div>
+
+            <div className="space-y-4 print:space-y-1">
+                <div className={`flex items-center gap-4 p-5 rounded-2xl border print:p-1 print:border-none ${selectedName2002 ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                    {selectedName2002 ? (
+                      <div className="flex items-center w-full text-xs">
+                        <span className="font-semibold text-slate-900 mr-2">2002 Voter List Record:</span>
+                        <span className="text-emerald-800 font-medium bg-emerald-100 px-3 py-1 rounded-full text-sm print:bg-none print:p-0 print:text-[11px] print:font-bold">✓ Verified Status: {selectedName2002}</span>
+                        <button onClick={() => {setSelectedName2002(null); setIsListed2002(false);}} className="ml-auto text-sm text-slate-400 hover:text-red-500 print:hidden">Clear</button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-600"><span className="font-semibold text-slate-900">2002 Voter List Status:</span> {isListed2002 ? "✓ Manually Confirmed Listed" : "⚠️ Unverified / Not Found"}</div>
+                    )}
+                </div>
+
+                <div className={`flex items-center gap-4 p-5 rounded-2xl border print:p-1 print:border-none ${selectedName2025 ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                    {selectedName2025 ? (
+                      <div className="flex items-center w-full text-xs">
+                        <span className="font-semibold text-slate-900 mr-2">2025 Voter List Record:</span>
+                        <span className="text-emerald-800 font-medium bg-emerald-100 px-3 py-1 rounded-full text-sm print:bg-none print:p-0 print:text-[11px] print:font-bold">✓ Verified Status: {selectedName2025}</span>
+                        <button onClick={() => {setSelectedName2025(null); setIsListed2025(false);}} className="ml-auto text-sm text-slate-400 hover:text-red-500 print:hidden">Clear</button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-600"><span className="font-semibold text-slate-900">2025 Voter List Status:</span> {isListed2025 ? "✓ Manually Confirmed Listed" : "⚠️ Unverified / Not Found"}</div>
+                    )}
+                </div>
+            </div>
           </div>
 
           <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full mx-auto border border-slate-200 print:shadow-none print:border-none print:p-0">
@@ -259,12 +300,13 @@ export default function Home() {
               </button>
             </div>
             
+            {/* CSS FIX FOR MOBILE: min-w-[1400px] forces horizontal scrolling instead of squishing */}
             <div className="overflow-x-auto rounded-xl border-2 border-slate-300 print:border-none print:overflow-visible">
-              <table className="w-full text-left border-collapse text-sm print:text-[10px] table-fixed print:table-auto">
+              <table className="w-full text-left border-collapse text-sm table-auto min-w-[1400px] print:min-w-0 print:text-[10px]">
                 <thead className="print:table-header-group">
                   <tr className="bg-slate-100 text-slate-700 print:bg-slate-200 print:text-black">
                     <th className="border-b-2 border-r-2 border-slate-300 p-4 font-bold text-center w-16 print:p-1">Mstr</th>
-                    <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold w-40 print:p-1">Document Type</th>
+                    <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold w-48 print:p-1">Document Type</th>
                     <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold print:p-1">Given Name</th>
                     <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold print:p-1">Father Name</th>
                     <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold print:p-1">Mother Name</th>
@@ -312,8 +354,7 @@ export default function Home() {
               </table>
             </div>
 
-            {/* --- FORCED RE-RENDER SECTION --- */}
-            <div key={masterDocIndex} className="mt-8">
+            <div className="mt-8">
                 <div className="flex flex-col sm:flex-row gap-4 print:hidden">
                     <button onClick={handleAnalyzeClick} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-4 px-6 rounded-full text-lg shadow-sm">
                         Run Deep Grid Analysis
