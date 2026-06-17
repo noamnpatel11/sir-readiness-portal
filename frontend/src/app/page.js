@@ -1,6 +1,9 @@
 "use client";
 import { useState, useEffect } from 'react';
-import VerificationModal from './VerificationModal'; // Connects our new Modal file!
+import VerificationModal from './VerificationModal';
+
+// Live Render Backend Link updated from image_b2bc22.jpg
+const BACKEND_URL = "https://sir-readiness-portal.onrender.com"; 
 
 export default function Home() {
   // --- PART 1: THE CATEGORY CHECKER STATE ---
@@ -8,63 +11,83 @@ export default function Home() {
   const [eligibilityResult, setEligibilityResult] = useState(null);
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
 
-  // --- PART 2: THE SEARCH ENGINE & LEDGER STATE (NEW) ---
+  // --- PART 2: THE SEARCH ENGINE & LEDGER STATE ---
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
 
+  // Checkbox states (for manual confirmation)
   const [isListed2002, setIsListed2002] = useState(false);
   const [isListed2025, setIsListed2025] = useState(false);
+  
+  // States to store the actual selected names from the database!
+  const [selectedName2002, setSelectedName2002] = useState(null);
+  const [selectedName2025, setSelectedName2025] = useState(null);
 
-  // --- PART 3: THE DOCUMENT SPREADSHEET STATE ---
+  // --- PART 3: THE DOCUMENT SPREADSHEET STATE (ALL 24 DOCUMENTS ADDED) ---
   const initialDocuments = [
-    { docType: "Birth Certificate", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "10th Marks Card", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "12th Marks Card", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "Voter ID", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "Aadhar Card", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "PAN Card", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" },
-    { docType: "Passport", givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: "" }
-  ];
+    "Birth Certificate", "10th LC", "10th Marks Card", "School ID Card", 
+    "PUC Leaving Certificates", "PUC Marks Card", "PUC School ID Card", 
+    "Degree College LC", "Degree College Marks Card", "Degree College ID Card", 
+    "Voter ID (2002 SIR)", "Voter ID (Present)", "PAN Card", "Aadhar Card", 
+    "Driving License", "Bank Account", "Ration Card", "House Document", 
+    "Plot Document", "Agri Land Document", "Service Document", "Govt. ID", 
+    "Residence Certificate", "Passport"
+  ].map(docName => ({
+    docType: docName, givenName: "", fatherName: "", motherName: "", spouseName: "", familyName: "", dob: "", dated: "", place: ""
+  }));
 
   const [documents, setDocuments] = useState(initialDocuments);
+  const [masterDocIndex, setMasterDocIndex] = useState(null); 
   const [resultMessage, setResultMessage] = useState("");
   const [errors, setErrors] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // --- SAVE & RESUME LOGIC (LOCAL STORAGE) ---
+  // --- SAVE & RESUME LOGIC ---
   useEffect(() => {
-    // Load Spreadsheet
     const savedDocs = localStorage.getItem('sirPortalDocs');
     if (savedDocs) setDocuments(JSON.parse(savedDocs));
+    setIsListed2002(localStorage.getItem('listed2002') === 'true');
+    setIsListed2025(localStorage.getItem('listed2025') === 'true');
+    
+    const savedMaster = localStorage.getItem('sirMasterDoc');
+    if (savedMaster !== null) setMasterDocIndex(parseInt(savedMaster, 10));
 
-    // Load Checkboxes
-    const saved2002 = localStorage.getItem('listed2002') === 'true';
-    const saved2025 = localStorage.getItem('listed2025') === 'true';
-    setIsListed2002(saved2002);
-    setIsListed2025(saved2025);
-
-    setIsLoaded(true); // Prevents hydration mismatch
+    setSelectedName2002(localStorage.getItem('name2002'));
+    setSelectedName2025(localStorage.getItem('name2025'));
+    
+    setIsLoaded(true);
   }, []);
 
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem('sirPortalDocs', JSON.stringify(documents));
+      if (masterDocIndex !== null) localStorage.setItem('sirMasterDoc', masterDocIndex);
+      if (selectedName2002) localStorage.setItem('name2002', selectedName2002);
+      else localStorage.removeItem('name2002');
+      if (selectedName2025) localStorage.setItem('name2025', selectedName2025);
+      else localStorage.removeItem('name2025');
     }
-  }, [documents, isLoaded]);
+  }, [documents, masterDocIndex, selectedName2002, selectedName2025, isLoaded]);
 
   const handleClearData = () => {
     if (window.confirm("Are you sure you want to clear all typed data?")) {
       setDocuments(initialDocuments);
+      setMasterDocIndex(null); 
       setResultMessage("");
       setErrors([]);
       localStorage.removeItem('sirPortalDocs');
+      localStorage.removeItem('sirMasterDoc');
       
       setIsListed2002(false);
       setIsListed2025(false);
+      setSelectedName2002(null);
+      setSelectedName2025(null);
       localStorage.removeItem('listed2002');
       localStorage.removeItem('listed2025');
+      localStorage.removeItem('name2002');
+      localStorage.removeItem('name2025');
     }
   };
 
@@ -73,57 +96,49 @@ export default function Home() {
     e.preventDefault();
     if (!dobInput) return;
     setEligibilityLoading(true);
-    
     try {
-      const res = await fetch(`https://sir-readiness-portal.onrender.com/api/eligibility?dob=${dobInput}`);
-      if (res.ok) {
-        const data = await res.json();
-        setEligibilityResult(data);
-      }
+      const res = await fetch(`${BACKEND_URL}/api/eligibility?dob=${dobInput}`);
+      if (res.ok) setEligibilityResult(await res.json());
     } catch (err) {
-      console.error("Eligibility fetch failed:", err);
+      console.error(err);
     } finally {
       setEligibilityLoading(false);
     }
   };
 
-  // --- LOGIC 2: DATABASE SEARCH ENGINE (NEW) ---
-  const handleCheck2002 = (e) => {
-    setIsListed2002(e.target.checked);
-    localStorage.setItem('listed2002', e.target.checked);
-  };
-
-  const handleCheck2025 = (e) => {
-    setIsListed2025(e.target.checked);
-    localStorage.setItem('listed2025', e.target.checked);
-  };
-
+  // --- LOGIC 2: DATABASE SEARCH ENGINE ---
   const handleSearch = async () => {
-    if (searchQuery.trim().length < 3) {
-      alert("Please enter at least 3 characters to search.");
-      return;
-    }
-
+    if (searchQuery.trim().length < 3) { alert("Please enter at least 3 characters."); return; }
     setIsSearchLoading(true);
     try {
-      // Note: If testing locally before deploying backend to Render, change this to http://localhost:5000/api/search-voter
-      const response = await fetch('https://sir-readiness-portal.onrender.com/api/search-voter', {
+      const response = await fetch(`${BACKEND_URL}/api/search-voter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ applicantName: searchQuery })
       });
-
-      if (!response.ok) throw new Error("Server communication error");
-      
-      const data = await response.json();
-      setSearchResults(data);
+      if (!response.ok) throw new Error("Error");
+      setSearchResults(await response.json());
       setIsModalOpen(true); 
     } catch (error) {
-      console.error(error);
-      alert("Could not reach backend database. Please ensure the server is updated and running.");
+      alert("Could not reach backend.");
     } finally {
       setIsSearchLoading(false);
     }
+  };
+
+  // SELECTING A NAME FROM THE POP-UP
+  const handleSelectVoterFromList = (record, year) => {
+    const fullName = `${record.givenName || ''} ${record.familyName || ''}`.trim() || record.name;
+    
+    if (year === '2002') {
+      setSelectedName2002(fullName);
+      setIsListed2002(true); 
+    } else {
+      setSelectedName2025(fullName);
+      setIsListed2025(true); 
+    }
+    
+    setIsModalOpen(false);
   };
 
   // --- LOGIC 3: TABLE INPUT & HIGHLIGHTING ---
@@ -134,177 +149,232 @@ export default function Home() {
     setErrors(errors.filter(err => !(err.rowIndex === rowIndex && err.field === fieldName)));
   };
 
-  const isErrorCell = (rowIndex, fieldName) => {
-    return errors.some(err => err.rowIndex === rowIndex && err.field === fieldName);
-  };
+  const isErrorCell = (rowIndex, fieldName) => errors.some(err => err.rowIndex === rowIndex && err.field === fieldName);
 
   // --- LOGIC 4: ANALYZE THE SPREADSHEET ---
   const handleAnalyzeClick = async () => {
-    setResultMessage("Transmitting data grid to server for analysis...");
-    setErrors([]); 
+    if (masterDocIndex === null) {
+      setResultMessage("WARNING: Please select a Master Document using the radio buttons on the left before analyzing.");
+      return;
+    }
 
+    setResultMessage("Transmitting data grid for analysis...");
+    setErrors([]); 
     try {
-      const response = await fetch('https://sir-readiness-portal.onrender.com/analyze', {
+      const response = await fetch(`${BACKEND_URL}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentGrid: documents }),
+        body: JSON.stringify({ documentGrid: documents, masterIndex: masterDocIndex }), 
       });
-
       const data = await response.json();
       setResultMessage(data.message || 'Analysis Complete!');
       if (data.errors) setErrors(data.errors);
-      
     } catch (error) {
-      setResultMessage("Error: Could not establish a connection to the backend server.");
+      setResultMessage("Error: Could not establish connection.");
     }
   };
 
-  // Prevent UI flashing during local storage load
-  if (!isLoaded) return <div className="min-h-screen bg-slate-900"></div>;
+  if (!isLoaded) return <div className="min-h-screen bg-white"></div>;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-8 font-sans pb-24">
-      <h1 className="text-4xl font-extrabold mb-10 text-center tracking-tight text-blue-400">SIR Readiness Portal</h1>
+    <div className="min-h-screen bg-white text-slate-900 p-4 sm:p-8 font-sans pb-32 relative overflow-hidden selection:bg-blue-200">
       
-      {/* SECTION 1: Category Eligibility Form */}
-      <div className="bg-slate-800 p-8 rounded-xl shadow-2xl max-w-4xl mx-auto mb-8 border border-slate-700">
-        <h2 className="text-xl font-semibold mb-4 text-center">Step 1: Determine Requirement Category</h2>
-        <form onSubmit={checkEligibility} className="flex gap-4 items-end">
-          <div className="flex-grow">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Applicant Date of Birth</label>
-            <input type="date" value={dobInput} onChange={(e) => setDobInput(e.target.value)} required
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
-          </div>
-          <button type="submit" disabled={eligibilityLoading}
-            className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white font-semibold py-3 px-6 rounded-lg transition">
-            {eligibilityLoading ? 'Checking...' : 'Check Status'}
-          </button>
-        </form>
+      {/* NOTEBOOK LM PASTEL BOTTOM GLOWS */}
+      <div className="fixed bottom-[-20%] left-[-10%] w-[800px] h-[600px] bg-green-200/50 rounded-full blur-[100px] pointer-events-none z-0"></div>
+      <div className="fixed bottom-[-20%] right-[-10%] w-[800px] h-[600px] bg-blue-200/50 rounded-full blur-[100px] pointer-events-none z-0"></div>
 
-        {eligibilityResult && (
-          <div className="mt-6 p-5 bg-slate-950 rounded-lg border border-blue-900">
-            <h3 className="text-lg font-bold text-blue-400 mb-2">{eligibilityResult.category}</h3>
-            <p className="text-sm text-slate-300 mb-3">{eligibilityResult.message}</p>
-            <ul className="grid grid-cols-1 gap-2 text-sm text-slate-300">
-              {eligibilityResult.missingDocs?.map((doc, idx) => (
-                <li key={idx}><span className="text-blue-500 mr-2">▹</span>{doc}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {/* SECTION 2: Electoral Database Search & Verification (NEWLY ADDED) */}
-      <div className="bg-slate-800 p-8 rounded-xl shadow-2xl max-w-4xl mx-auto mb-8 border border-slate-700">
-        <h2 className="text-xl font-semibold mb-6 text-center">Step 2: Electoral Roll Search & Verification</h2>
+      {/* MAIN CONTENT WRAPPER */}
+      <div className="relative z-10 max-w-[95%] xl:max-w-7xl mx-auto pt-10">
         
-        {/* Search Bar */}
-        <div className="flex gap-4 mb-8">
-            <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Enter full or partial name (e.g., Usman Patel)"
-                className="flex-1 px-4 py-3 bg-slate-950 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            />
+        {/* TITLE */}
+        <div className="text-center mb-16">
+          <h1 className="text-5xl sm:text-6xl font-medium tracking-tight text-slate-900 mb-4">
+            SIR <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-emerald-500">Readiness Portal</span>
+          </h1>
+          <p className="text-slate-500 text-lg sm:text-xl font-medium">Verify documents, search records, and gain insights faster.</p>
+        </div>
+        
+        {/* SECTION 1: Category Eligibility Form */}
+        <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 max-w-4xl mx-auto mb-10 transition-shadow hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+          <h2 className="text-xl font-semibold mb-6 text-slate-800">Step 1: Determine Requirement Category</h2>
+          
+          <form onSubmit={checkEligibility} className="flex flex-col sm:flex-row gap-4 sm:items-end">
+            <div className="flex-grow w-full">
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 ml-1">Applicant Date of Birth</label>
+              <input 
+                type="date" 
+                value={dobInput} 
+                onChange={(e) => setDobInput(e.target.value)} 
+                required
+                className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 text-slate-900 transition-all duration-200" 
+              />
+            </div>
             <button 
-                onClick={handleSearch}
-                disabled={isSearchLoading}
-                className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white font-semibold py-3 px-8 rounded-lg transition"
+              type="submit" 
+              disabled={eligibilityLoading}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-4 px-10 rounded-full transition-all duration-200"
             >
-                {isSearchLoading ? 'Scanning...' : 'Search Database'}
+              {eligibilityLoading ? 'Checking...' : 'Check Status'}
             </button>
-        </div>
+          </form>
 
-        {/* Manual Checkboxes */}
-        <div className="space-y-4">
-            <div className="flex items-center gap-4 bg-slate-950 p-4 border border-slate-700 rounded-lg hover:border-blue-500 transition">
-                <input 
-                    type="checkbox" 
-                    id="check2002"
-                    checked={isListed2002}
-                    onChange={handleCheck2002}
-                    className="w-6 h-6 rounded cursor-pointer accent-blue-600"
-                />
-                <label htmlFor="check2002" className="text-slate-300 cursor-pointer select-none text-lg">
-                    <span className="font-bold text-white">2002 Voter List:</span> I visually confirm this applicant is listed.
-                </label>
+          {eligibilityResult && (
+            <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+              <h3 className="text-xl font-semibold text-blue-700 mb-2">{eligibilityResult.category}</h3>
+              <p className="text-slate-600 mb-5 leading-relaxed">{eligibilityResult.message}</p>
+              <ul className="grid grid-cols-1 gap-3">
+                {eligibilityResult.missingDocs?.map((doc, idx) => (
+                  <li key={idx} className="flex items-center text-slate-700">
+                    <span className="text-blue-500 mr-3 font-bold">•</span>
+                    <span>{doc}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-
-            <div className="flex items-center gap-4 bg-slate-950 p-4 border border-slate-700 rounded-lg hover:border-green-500 transition">
-                <input 
-                    type="checkbox" 
-                    id="check2025"
-                    checked={isListed2025}
-                    onChange={handleCheck2025}
-                    className="w-6 h-6 rounded cursor-pointer accent-green-600"
-                />
-                <label htmlFor="check2025" className="text-slate-300 cursor-pointer select-none text-lg">
-                    <span className="font-bold text-white">2025 Voter List:</span> I visually confirm this applicant is listed.
-                </label>
-            </div>
-        </div>
-      </div>
-
-      {/* SECTION 3: Document Master Ledger (Your original Grid) */}
-      <div className="bg-white text-black p-6 rounded-lg shadow-xl w-full overflow-x-auto border border-slate-300">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Step 3: Document Discrepancy Analysis</h2>
-          <button onClick={handleClearData} className="text-sm bg-red-100 hover:bg-red-200 text-red-700 py-2 px-4 rounded border border-red-300 transition-colors font-semibold">
-            Clear All Saved Data
-          </button>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse whitespace-nowrap text-sm">
-            <thead>
-              <tr className="bg-gray-200">
-                <th className="border p-2">Document Type</th>
-                <th className="border p-2">Given Name</th>
-                <th className="border p-2">Father Name</th>
-                <th className="border p-2">Mother Name</th>
-                <th className="border p-2">Spouse Name</th>
-                <th className="border p-2">Family Name</th>
-                <th className="border p-2 bg-blue-100">DOB</th>
-                <th className="border p-2 bg-blue-100">Place of Birth</th>
-                <th className="border p-2 bg-blue-100">Date Issued</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((doc, index) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="border p-2 font-medium bg-gray-100">{doc.docType}</td>
-                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'givenName') ? 'bg-red-200 border-2 border-red-500 text-red-900 font-bold' : 'focus:bg-blue-50'}`} value={doc.givenName} onChange={(e) => handleInputChange(index, 'givenName', e.target.value)} /></td>
-                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'fatherName') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.fatherName} onChange={(e) => handleInputChange(index, 'fatherName', e.target.value)} /></td>
-                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'motherName') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.motherName} onChange={(e) => handleInputChange(index, 'motherName', e.target.value)} /></td>
-                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'spouseName') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.spouseName} onChange={(e) => handleInputChange(index, 'spouseName', e.target.value)} /></td>
-                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'familyName') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.familyName} onChange={(e) => handleInputChange(index, 'familyName', e.target.value)} /></td>
-                  <td className="border p-0"><input type="date" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'dob') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.dob} onChange={(e) => handleInputChange(index, 'dob', e.target.value)} /></td>
-                  <td className="border p-0"><input type="text" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'place') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.place} onChange={(e) => handleInputChange(index, 'place', e.target.value)} /></td>
-                  <td className="border p-0"><input type="date" className={`w-full h-full p-2 outline-none ${isErrorCell(index, 'dated') ? 'bg-red-200 border-2 border-red-500' : 'focus:bg-blue-50'}`} value={doc.dated} onChange={(e) => handleInputChange(index, 'dated', e.target.value)} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          )}
         </div>
 
-        <button onClick={handleAnalyzeClick} className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition-colors">
-          Analyze Grid for Discrepancies
-        </button>
-
-        {resultMessage && (
-          <div className={`mt-4 p-4 rounded text-center font-medium ${resultMessage.includes("Error") || resultMessage.includes("WARNING") ? "bg-red-100 text-red-700 border border-red-300" : "bg-green-100 text-green-800 border border-green-300"}`}>
-            {resultMessage}
+        {/* SECTION 2: Electoral Database Search */}
+        <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 max-w-4xl mx-auto mb-12 transition-shadow hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+          <h2 className="text-xl font-semibold mb-6 text-slate-800">Step 2: Electoral Roll Search & Verification</h2>
+          
+          <div className="flex flex-col sm:flex-row gap-4 mb-8">
+              <input 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Enter full or partial name (e.g., Usman Patel)"
+                  className="flex-1 w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 text-slate-900 transition-all duration-200 placeholder-slate-400"
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+              <button 
+                  onClick={handleSearch}
+                  disabled={isSearchLoading}
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-4 px-10 rounded-full transition-all duration-200 flex justify-center items-center gap-2"
+              >
+                  {isSearchLoading ? 'Scanning...' : 'Search Database'}
+              </button>
           </div>
-        )}
+
+          <div className="space-y-4">
+              {/* 2002 UI LOGIC */}
+              <div className={`flex items-center gap-4 p-5 rounded-2xl border transition-colors ${selectedName2002 ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
+                  {selectedName2002 ? (
+                    <div className="flex items-center w-full">
+                      <div className="bg-emerald-500 text-white p-1 rounded-full mr-3">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                      </div>
+                      <span className="font-semibold text-slate-900 mr-2">2002 Voter List:</span>
+                      <span className="text-emerald-800 font-medium bg-emerald-100 px-3 py-1 rounded-full text-sm">Verified: {selectedName2002}</span>
+                      <button onClick={() => {setSelectedName2002(null); setIsListed2002(false);}} className="ml-auto text-sm text-slate-400 hover:text-red-500 font-medium transition-colors">Clear</button>
+                    </div>
+                  ) : (
+                    <>
+                      <input type="checkbox" id="check2002" checked={isListed2002} onChange={(e) => setIsListed2002(e.target.checked)} className="w-6 h-6 rounded border-slate-300 cursor-pointer accent-blue-600" />
+                      <label htmlFor="check2002" className="text-slate-700 cursor-pointer select-none">
+                          <span className="font-semibold text-slate-900">2002 Voter List: </span> I manually confirm this applicant is listed.
+                      </label>
+                    </>
+                  )}
+              </div>
+
+              {/* 2025 UI LOGIC */}
+              <div className={`flex items-center gap-4 p-5 rounded-2xl border transition-colors ${selectedName2025 ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
+                  {selectedName2025 ? (
+                    <div className="flex items-center w-full">
+                      <div className="bg-emerald-500 text-white p-1 rounded-full mr-3">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                      </div>
+                      <span className="font-semibold text-slate-900 mr-2">2025 Voter List:</span>
+                      <span className="text-emerald-800 font-medium bg-emerald-100 px-3 py-1 rounded-full text-sm">Verified: {selectedName2025}</span>
+                      <button onClick={() => {setSelectedName2025(null); setIsListed2025(false);}} className="ml-auto text-sm text-slate-400 hover:text-red-500 font-medium transition-colors">Clear</button>
+                    </div>
+                  ) : (
+                    <>
+                      <input type="checkbox" id="check2025" checked={isListed2025} onChange={(e) => setIsListed2025(e.target.checked)} className="w-6 h-6 rounded border-slate-300 cursor-pointer accent-green-600" />
+                      <label htmlFor="check2025" className="text-slate-700 cursor-pointer select-none">
+                          <span className="font-semibold text-slate-900">2025 Voter List: </span> I manually confirm this applicant is listed.
+                      </label>
+                    </>
+                  )}
+              </div>
+          </div>
+        </div>
+
+        {/* SECTION 3: Document Master Ledger */}
+        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full mx-auto overflow-hidden border border-slate-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+            <h2 className="text-xl font-semibold text-slate-800">Step 3: Document Discrepancy Analysis</h2>
+            <button onClick={handleClearData} className="text-sm text-red-600 hover:text-red-700 font-medium py-2 px-4 rounded-full border border-red-200 hover:bg-red-50 transition-colors">
+              Clear Saved Data
+            </button>
+          </div>
+          
+          <div className="overflow-x-auto rounded-xl border-2 border-slate-300 max-h-[600px] overflow-y-auto">
+            <table className="w-full text-left border-collapse whitespace-nowrap text-sm">
+              <thead className="sticky top-0 z-10 shadow-sm">
+                <tr className="bg-slate-100 text-slate-700">
+                  <th className="border-b-2 border-r-2 border-slate-300 p-4 font-bold text-center text-blue-700 bg-blue-100/50">Master</th>
+                  <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold">Document Type</th>
+                  <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold">Given Name</th>
+                  <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold">Father Name</th>
+                  <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold">Mother Name</th>
+                  <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold">Spouse Name</th>
+                  <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold">Family Name</th>
+                  <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold text-blue-700 bg-blue-50">DOB</th>
+                  <th className="border-b-2 border-r-2 border-slate-300 p-4 font-semibold text-blue-700 bg-blue-50">Place of Birth</th>
+                  <th className="border-b-2 border-slate-300 p-4 font-semibold text-blue-700 bg-blue-50">Date Issued</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {documents.map((doc, index) => (
+                  <tr key={index} className={`transition-colors ${masterDocIndex === index ? 'bg-blue-50/60' : 'hover:bg-slate-50'}`}>
+                    <td className="border-b border-r border-slate-300 p-0 text-center align-middle bg-slate-50">
+                      <div className="flex justify-center items-center w-full h-full p-4">
+                        <input 
+                          type="radio" 
+                          name="masterDocument"
+                          checked={masterDocIndex === index}
+                          onChange={() => setMasterDocIndex(index)}
+                          className="w-5 h-5 cursor-pointer accent-blue-600"
+                        />
+                      </div>
+                    </td>
+                    <td className="border-b border-r border-slate-300 p-4 font-medium text-slate-600 bg-slate-50">{doc.docType}</td>
+                    <td className="border-b border-r border-slate-300 p-0"><input type="text" className={`w-full h-full p-4 outline-none transition-all ${isErrorCell(index, 'givenName') ? 'bg-red-50 border-2 border-red-500 text-red-900 font-bold' : 'bg-transparent focus:bg-blue-50 focus:ring-inset focus:ring-2 focus:ring-blue-400 text-slate-800'}`} value={doc.givenName} onChange={(e) => handleInputChange(index, 'givenName', e.target.value)} /></td>
+                    <td className="border-b border-r border-slate-300 p-0"><input type="text" className={`w-full h-full p-4 outline-none transition-all ${isErrorCell(index, 'fatherName') ? 'bg-red-50 border-2 border-red-500' : 'bg-transparent focus:bg-blue-50 focus:ring-inset focus:ring-2 focus:ring-blue-400 text-slate-800'}`} value={doc.fatherName} onChange={(e) => handleInputChange(index, 'fatherName', e.target.value)} /></td>
+                    <td className="border-b border-r border-slate-300 p-0"><input type="text" className={`w-full h-full p-4 outline-none transition-all ${isErrorCell(index, 'motherName') ? 'bg-red-50 border-2 border-red-500' : 'bg-transparent focus:bg-blue-50 focus:ring-inset focus:ring-2 focus:ring-blue-400 text-slate-800'}`} value={doc.motherName} onChange={(e) => handleInputChange(index, 'motherName', e.target.value)} /></td>
+                    <td className="border-b border-r border-slate-300 p-0"><input type="text" className={`w-full h-full p-4 outline-none transition-all ${isErrorCell(index, 'spouseName') ? 'bg-red-50 border-2 border-red-500' : 'bg-transparent focus:bg-blue-50 focus:ring-inset focus:ring-2 focus:ring-blue-400 text-slate-800'}`} value={doc.spouseName} onChange={(e) => handleInputChange(index, 'spouseName', e.target.value)} /></td>
+                    <td className="border-b border-r border-slate-300 p-0"><input type="text" className={`w-full h-full p-4 outline-none transition-all ${isErrorCell(index, 'familyName') ? 'bg-red-50 border-2 border-red-500' : 'bg-transparent focus:bg-blue-50 focus:ring-inset focus:ring-2 focus:ring-blue-400 text-slate-800'}`} value={doc.familyName} onChange={(e) => handleInputChange(index, 'familyName', e.target.value)} /></td>
+                    <td className="border-b border-r border-slate-300 p-0"><input type="date" className={`w-full h-full p-4 outline-none transition-all ${isErrorCell(index, 'dob') ? 'bg-red-50 border-2 border-red-500' : 'bg-transparent focus:bg-blue-50 focus:ring-inset focus:ring-2 focus:ring-blue-400 text-slate-800'}`} value={doc.dob} onChange={(e) => handleInputChange(index, 'dob', e.target.value)} /></td>
+                    <td className="border-b border-r border-slate-300 p-0"><input type="text" className={`w-full h-full p-4 outline-none transition-all ${isErrorCell(index, 'place') ? 'bg-red-50 border-2 border-red-500' : 'bg-transparent focus:bg-blue-50 focus:ring-inset focus:ring-2 focus:ring-blue-400 text-slate-800'}`} value={doc.place} onChange={(e) => handleInputChange(index, 'place', e.target.value)} /></td>
+                    <td className="border-b border-slate-300 p-0"><input type="date" className={`w-full h-full p-4 outline-none transition-all ${isErrorCell(index, 'dated') ? 'bg-red-50 border-2 border-red-500' : 'bg-transparent focus:bg-blue-50 focus:ring-inset focus:ring-2 focus:ring-blue-400 text-slate-800'}`} value={doc.dated} onChange={(e) => handleInputChange(index, 'dated', e.target.value)} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <button 
+            onClick={handleAnalyzeClick} 
+            className="mt-8 w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-4 px-6 rounded-full transition-all duration-200 text-lg shadow-sm active:scale-[0.99]"
+          >
+            Run Deep Grid Analysis
+          </button>
+
+          {resultMessage && (
+            <div className={`mt-6 p-5 rounded-2xl text-center font-semibold text-lg border ${resultMessage.includes("Error") || resultMessage.includes("WARNING") ? "bg-red-50 text-red-600 border-red-200" : "bg-green-50 text-emerald-700 border-green-200"}`}>
+              {resultMessage}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Render the Hidden Pop-up Modal Component */}
       <VerificationModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         searchResults={searchResults} 
+        onSelectRecord={handleSelectVoterFromList} 
       />
     </div>
   );

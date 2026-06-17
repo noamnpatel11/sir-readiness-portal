@@ -107,33 +107,46 @@ app.post('/analyze', (req, res) => {
 // ==========================================
 // 4. DATABASE SEARCH ENGINE (NEW MODAL LOGIC)
 // ==========================================
-function getVoterMatches(voterList, searchInput) {
-    if (!searchInput || searchInput.length < 3) return []; 
-    
-    const query = searchInput.toLowerCase().trim();
-    
-    return voterList.filter(voter => {
-        const given = voter.givenName || '';
-        const father = voter.fatherName || '';
-        const family = voter.familyName || '';
-        const fullRecordString = `${given} ${father} ${family}`.toLowerCase();
-        
-        return fullRecordString.includes(query);
-    });
-}
-
 app.post('/api/search-voter', (req, res) => {
-    const { applicantName } = req.body; 
+  console.log("\n--- NEW SEARCH REQUEST INITIATED ---");
+  console.log("1. Raw data received from frontend:", req.body);
 
-    const matches2002 = getVoterMatches(voterList2002, applicantName);
-    const matches2025 = getVoterMatches(voterList2025, applicantName);
+  // Catch-all line to find the search term no matter how the frontend labels it
+  const rawSearchTerm = req.body.applicantName || req.body.query || req.query.query || req.query.applicantName;
+  console.log("2. Server understood the search term as:", rawSearchTerm);
 
-    res.json({
-        searchQuery: applicantName,
-        results2002: matches2002,
-        results2025: matches2025,
-        totalFound: matches2002.length + matches2025.length
-    });
+  // If the search is empty or missing, return zero results immediately
+  if (!rawSearchTerm) {
+    console.log("3. Search term was empty/undefined. Returning 0 results.");
+    return res.json({ searchQuery: "", results2002: [], results2025: [], totalFound: 0 });
+  }
+
+  // Make the search term lowercase to ignore capitalization
+  const searchQuery = rawSearchTerm.toLowerCase().trim();
+
+  // Filter the 2002 list
+  const results2002 = voterList2002.filter(voter => {
+    const given = (voter.givenName || "").toLowerCase();
+    const family = (voter.familyName || "").toLowerCase();
+    return given.includes(searchQuery) || family.includes(searchQuery);
+  });
+
+  // Filter the 2025 list
+  const results2025 = voterList2025.filter(voter => {
+    const given = (voter.givenName || "").toLowerCase();
+    const family = (voter.familyName || "").toLowerCase();
+    return given.includes(searchQuery) || family.includes(searchQuery);
+  });
+
+  console.log(`4. Database check complete: Found ${results2002.length} in 2002, and ${results2025.length} in 2025.`);
+
+  // Send the matched results back to the frontend
+  res.json({
+    searchQuery: rawSearchTerm,
+    results2002: results2002,
+    results2025: results2025,
+    totalFound: results2002.length + results2025.length
+  });
 });
 
 // ==========================================
