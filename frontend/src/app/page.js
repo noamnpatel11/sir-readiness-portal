@@ -141,10 +141,10 @@ export default function Home() {
     setErrors(errors.filter(err => !(err.rowIndex === rowIndex && err.field === fieldName)));
   };
 
-  // --- UPDATED: Handle Master Document Changes ---
+  // --- UPDATED: Handle Master Selection with Forced Wipe ---
   const handleMasterSelection = (index) => {
     setMasterDocIndex(index);
-    setErrors([]); 
+    setErrors([]); // Explicitly wipe errors
     setResultMessage("⚠️ Master Document changed. Please click 'Run Deep Grid Analysis' again to generate a new report.");
   };
 
