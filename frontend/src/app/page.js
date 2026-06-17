@@ -140,6 +140,16 @@ export default function Home() {
     setErrors(errors.filter(err => !(err.rowIndex === rowIndex && err.field === fieldName)));
   };
 
+  // --- NEW: Handle Master Document Changes ---
+  const handleMasterSelection = (index) => {
+    setMasterDocIndex(index);
+    // If there is an old report showing, clear it so the user knows they must re-analyze
+    if (resultMessage || errors.length > 0) {
+      setErrors([]); 
+      setResultMessage("⚠️ Master Document changed. Please click 'Run Deep Grid Analysis' again to generate a new report.");
+    }
+  };
+
   const isErrorCell = (rowIndex, fieldName) => errors.some(err => err.rowIndex === rowIndex && err.field === fieldName);
 
   const handleAnalyzeClick = async () => {
@@ -308,24 +318,21 @@ export default function Home() {
                     return (
                       <tr key={index} className={`transition-colors ${masterDocIndex === index ? 'bg-blue-50/60 print:bg-slate-100' : 'hover:bg-slate-50'} ${!hasData ? 'print:hidden' : ''}`}>
                         
-                        {/* --- FIXED MASTER RADIO BUTTON BEHAVIOR --- */}
                         <td className="border-b border-r border-slate-300 p-0 text-center align-middle bg-slate-50 print:p-1 print:bg-white">
                           <div className="flex justify-center items-center w-full h-full p-4 print:p-0">
-                            {/* The radio button stays visible on the web! */}
+                            {/* Triggers the new handleMasterSelection function! */}
                             <input 
                               type="radio" 
                               name="masterDocument" 
                               checked={masterDocIndex === index} 
-                              onChange={() => setMasterDocIndex(index)} 
+                              onChange={() => handleMasterSelection(index)} 
                               className="w-5 h-5 cursor-pointer accent-blue-600 print:hidden"
                             />
-                            {/* The [★] only shows up when you click Export to PDF! */}
                             {masterDocIndex === index && (
                               <span className="hidden print:inline text-black font-bold text-[12px]">[★]</span>
                             )}
                           </div>
                         </td>
-                        {/* ------------------------------------------- */}
 
                         <td className="border-b border-r border-slate-300 p-4 font-medium text-slate-600 bg-slate-50 print:p-1 print:bg-white print:text-black print:font-bold whitespace-normal">{doc.docType}</td>
                         <td className="border-b border-r border-slate-300 p-0">{renderCell(index, 'givenName')}</td>
@@ -353,7 +360,7 @@ export default function Home() {
             </div>
 
             {resultMessage && (
-              <div className={`mt-6 p-5 rounded-2xl text-center font-semibold text-lg border print:mt-4 print:p-3 print:text-xs print:text-left ${resultMessage.includes("Error") || resultMessage.includes("WARNING") ? "bg-red-50 text-red-600 border-red-200 print:border-red-500" : "bg-green-50 text-emerald-700 border-green-200 print:border-slate-400"}`}>
+              <div className={`mt-6 p-5 rounded-2xl text-center font-semibold text-lg border print:mt-4 print:p-3 print:text-xs print:text-left ${resultMessage.includes("Error") || resultMessage.includes("WARNING") || resultMessage.includes("changed") ? "bg-red-50 text-red-600 border-red-200 print:border-red-500" : "bg-green-50 text-emerald-700 border-green-200 print:border-slate-400"}`}>
                 <strong className="hidden print:inline">Analysis Findings: </strong> {resultMessage}
               </div>
             )}
