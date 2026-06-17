@@ -167,14 +167,12 @@ export default function Home() {
     window.print();
   };
 
-  // --- SMART CELL RENDERER (Solves Text Cut-off & PDF Wrapping) ---
   const renderCell = (index, field, isDate = false) => {
     const value = documents[index][field];
     const hasError = isErrorCell(index, field);
     
     return (
       <div className="h-full w-full print:p-1">
-        {/* 1. WEB VIEW: Actual Input field (Hidden during PDF export) */}
         <input
           type={isDate ? "date" : "text"}
           className={`w-full h-full p-4 outline-none min-w-[140px] transition-all print:hidden ${
@@ -183,7 +181,6 @@ export default function Home() {
           value={value}
           onChange={(e) => handleInputChange(index, field, e.target.value)}
         />
-        {/* 2. PDF VIEW: Plain text block that allows wrapping (Hidden on web) */}
         <div className={`hidden print:block text-[10px] leading-tight break-words whitespace-normal w-full ${
           hasError ? 'text-red-600 font-bold' : 'text-slate-900'
         }`}>
@@ -197,7 +194,6 @@ export default function Home() {
 
   return (
     <>
-      {/* Forces the PDF Export Dialog into Landscape Mode automatically */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           @page { size: landscape; margin: 10mm; }
@@ -206,7 +202,6 @@ export default function Home() {
 
       <div className="min-h-screen bg-white text-slate-900 p-4 sm:p-8 font-sans pb-32 relative overflow-hidden selection:bg-blue-200 print:p-0 print:pb-0">
         
-        {/* BACKGROUND GLOWS */}
         <div className="fixed bottom-[-20%] left-[-10%] w-[800px] h-[600px] bg-green-200/50 rounded-full blur-[100px] pointer-events-none z-0 print:hidden"></div>
         <div className="fixed bottom-[-20%] right-[-10%] w-[800px] h-[600px] bg-blue-200/50 rounded-full blur-[100px] pointer-events-none z-0 print:hidden"></div>
 
@@ -219,7 +214,6 @@ export default function Home() {
             <p className="text-slate-500 text-lg sm:text-xl font-medium print:text-xs print:text-slate-600">Verification Summary & Document Discrepancy Evaluation Report</p>
           </div>
           
-          {/* STEP 1 */}
           <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 max-w-4xl mx-auto mb-10 print:shadow-none print:border-none print:p-0 print:mb-4">
             <h2 className="text-xl font-semibold mb-6 text-slate-800 print:text-sm print:mb-2 print:border-b print:pb-1">Step 1: Requirement Category</h2>
             
@@ -247,7 +241,6 @@ export default function Home() {
             )}
           </div>
 
-          {/* STEP 2 */}
           <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 max-w-4xl mx-auto mb-12 print:shadow-none print:border-none print:p-0 print:mb-4">
             <h2 className="text-xl font-semibold mb-6 text-slate-800 print:text-sm print:mb-2 print:border-b print:pb-1">Step 2: Electoral Roll Search & Verification</h2>
             
@@ -285,7 +278,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* STEP 3 - FULL HEIGHT TABLE (NO INNER SCROLL) */}
           <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full mx-auto border border-slate-200 print:shadow-none print:border-none print:p-0">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 print:mb-2">
               <h2 className="text-xl font-semibold text-slate-800 print:text-sm print:border-b print:pb-1 print:w-full">Step 3: Document Discrepancy Analysis</h2>
@@ -294,7 +286,6 @@ export default function Home() {
               </button>
             </div>
             
-            {/* Removed the max-h-[600px] and overflow-y-auto to allow vertical stretching */}
             <div className="overflow-x-auto rounded-xl border-2 border-slate-300 print:border-none print:overflow-visible">
               <table className="w-full text-left border-collapse text-sm print:text-[10px] table-fixed print:table-auto">
                 <thead className="print:table-header-group">
@@ -316,18 +307,27 @@ export default function Home() {
                     const hasData = Object.values(doc).some(val => val !== "" && val !== doc.docType);
                     return (
                       <tr key={index} className={`transition-colors ${masterDocIndex === index ? 'bg-blue-50/60 print:bg-slate-100' : 'hover:bg-slate-50'} ${!hasData ? 'print:hidden' : ''}`}>
+                        
+                        {/* --- FIXED MASTER RADIO BUTTON BEHAVIOR --- */}
                         <td className="border-b border-r border-slate-300 p-0 text-center align-middle bg-slate-50 print:p-1 print:bg-white">
                           <div className="flex justify-center items-center w-full h-full p-4 print:p-0">
-                            {masterDocIndex === index ? (
-                              <span className="text-blue-600 font-bold print:text-black">[★]</span>
-                            ) : (
-                              <input type="radio" name="masterDocument" checked={masterDocIndex === index} onChange={() => setMasterDocIndex(index)} className="w-5 h-5 cursor-pointer accent-blue-600 print:hidden"/>
+                            {/* The radio button stays visible on the web! */}
+                            <input 
+                              type="radio" 
+                              name="masterDocument" 
+                              checked={masterDocIndex === index} 
+                              onChange={() => setMasterDocIndex(index)} 
+                              className="w-5 h-5 cursor-pointer accent-blue-600 print:hidden"
+                            />
+                            {/* The [★] only shows up when you click Export to PDF! */}
+                            {masterDocIndex === index && (
+                              <span className="hidden print:inline text-black font-bold text-[12px]">[★]</span>
                             )}
                           </div>
                         </td>
+                        {/* ------------------------------------------- */}
+
                         <td className="border-b border-r border-slate-300 p-4 font-medium text-slate-600 bg-slate-50 print:p-1 print:bg-white print:text-black print:font-bold whitespace-normal">{doc.docType}</td>
-                        
-                        {/* Rendering cells using the new smart text-wrapper helper */}
                         <td className="border-b border-r border-slate-300 p-0">{renderCell(index, 'givenName')}</td>
                         <td className="border-b border-r border-slate-300 p-0">{renderCell(index, 'fatherName')}</td>
                         <td className="border-b border-r border-slate-300 p-0">{renderCell(index, 'motherName')}</td>
