@@ -76,6 +76,7 @@ export default function Home() {
       setErrors([]);
       localStorage.removeItem('sirPortalDocs');
       localStorage.removeItem('sirMasterDoc');
+      
       setIsListed2002(false);
       setIsListed2025(false);
       setSelectedName2002(null);
@@ -140,11 +141,11 @@ export default function Home() {
     setErrors(errors.filter(err => !(err.rowIndex === rowIndex && err.field === fieldName)));
   };
 
-  // --- FIXED: WIPE LOGIC ---
+  // --- UPDATED: Handle Master Document Changes ---
   const handleMasterSelection = (index) => {
     setMasterDocIndex(index);
-    setErrors([]);      // Wipes errors immediately
-    setResultMessage(""); // Wipes report immediately
+    setErrors([]); 
+    setResultMessage("⚠️ Master Document changed. Please click 'Run Deep Grid Analysis' again to generate a new report.");
   };
 
   const isErrorCell = (rowIndex, fieldName) => errors.some(err => err.rowIndex === rowIndex && err.field === fieldName);
