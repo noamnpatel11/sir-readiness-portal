@@ -141,7 +141,6 @@ export default function Home() {
     setErrors(errors.filter(err => !(err.rowIndex === rowIndex && err.field === fieldName)));
   };
 
-  // --- UPDATED: Wipe State on selection ---
   const handleMasterSelection = (index) => {
     setMasterDocIndex(index);
     setErrors([]); 
@@ -179,6 +178,38 @@ export default function Home() {
 
   const handleExportPDF = () => {
     window.print();
+  };
+
+  // --- NEW: CSV / EXCEL EXPORT FUNCTION ---
+  const exportToCSV = () => {
+    const headers = ['Master Status', 'Document Type', 'Given Name', 'Father Name', 'Mother Name', 'Spouse Name', 'Family Name', 'DOB', 'Place of Birth', 'Date Issued'];
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+
+    documents.forEach((doc, index) => {
+      // Only export rows that have data typed into them
+      const hasData = Object.values(doc).some(val => val !== "" && val !== doc.docType);
+      
+      if (hasData) {
+        const isMaster = masterDocIndex === index ? '[★] MASTER DOCUMENT' : '';
+        const rowData = [
+          isMaster, doc.docType, doc.givenName, doc.fatherName, doc.motherName, doc.spouseName, doc.familyName, doc.dob, doc.place, doc.dated
+        ].map(field => `"${(field || '').toString().replace(/"/g, '""')}"`); // Escapes quotes and wraps in quotes
+        
+        csvRows.push(rowData.join(','));
+      }
+    });
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'SIR_Readiness_Report.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const renderCell = (index, field, isDate = false) => {
@@ -300,7 +331,6 @@ export default function Home() {
               </button>
             </div>
             
-            {/* CSS FIX FOR MOBILE: min-w-[1400px] forces horizontal scrolling instead of squishing */}
             <div className="overflow-x-auto rounded-xl border-2 border-slate-300 print:border-none print:overflow-visible">
               <table className="w-full text-left border-collapse text-sm table-auto min-w-[1400px] print:min-w-0 print:text-[10px]">
                 <thead className="print:table-header-group">
@@ -355,12 +385,16 @@ export default function Home() {
             </div>
 
             <div className="mt-8">
+                {/* --- NEW BUTTON LAYOUT WITH CSV EXPORT --- */}
                 <div className="flex flex-col sm:flex-row gap-4 print:hidden">
-                    <button onClick={handleAnalyzeClick} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-4 px-6 rounded-full text-lg shadow-sm">
+                    <button onClick={handleAnalyzeClick} className="flex-[2] bg-slate-900 hover:bg-slate-800 text-white font-medium py-4 px-6 rounded-full text-lg shadow-sm">
                         Run Deep Grid Analysis
                     </button>
                     <button onClick={handleExportPDF} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-4 px-6 rounded-full text-lg shadow-sm flex items-center justify-center gap-2">
-                        Export Report to PDF
+                        Export PDF
+                    </button>
+                    <button onClick={exportToCSV} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-4 px-6 rounded-full text-lg shadow-sm flex items-center justify-center gap-2">
+                        Export CSV
                     </button>
                 </div>
 
