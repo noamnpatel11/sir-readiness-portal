@@ -141,11 +141,11 @@ export default function Home() {
     setErrors(errors.filter(err => !(err.rowIndex === rowIndex && err.field === fieldName)));
   };
 
-  // --- UPDATED: Handle Master Selection with Forced Wipe ---
+  // --- UPDATED: Wipe State on selection ---
   const handleMasterSelection = (index) => {
     setMasterDocIndex(index);
     setErrors([]); 
-    setResultMessage("⚠️ Master Document changed. Please click 'Run Deep Grid Analysis' again to generate a new report.");
+    setResultMessage("⚠️ Master Document changed. Please click 'Run Deep Grid Analysis' to generate a new report.");
   };
 
   const isErrorCell = (rowIndex, fieldName) => errors.some(err => err.rowIndex === rowIndex && err.field === fieldName);
@@ -155,19 +155,23 @@ export default function Home() {
       setResultMessage("WARNING: Please select a Master Document using the radio buttons on the left before analyzing.");
       return;
     }
-    setResultMessage("Transmitting data grid for analysis...");
+    setResultMessage("Transmitting data grid to server...");
     setErrors([]); 
     try {
-      const response = await fetch(`${BACKEND_URL}/analyze`, {
+      // Adding ?t=${Date.now()} forces the server to not cache the response
+      const response = await fetch(`${BACKEND_URL}/analyze?t=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documentGrid: documents, masterIndex: masterDocIndex }), 
       });
+      
+      if (!response.ok) throw new Error(`Server status: ${response.status}`);
+
       const data = await response.json();
       setResultMessage(data.message || 'Analysis Complete!');
       if (data.errors) setErrors(data.errors);
     } catch (error) {
-      setResultMessage("Error: Could not establish connection.");
+      setResultMessage("ERROR: " + error.message + ". Check your Backend/Render Logs.");
     }
   };
 
@@ -234,19 +238,6 @@ export default function Home() {
                 {eligibilityLoading ? 'Checking...' : 'Check Status'}
               </button>
             </form>
-
-            {dobInput && (
-              <div className="hidden print:block text-xs text-slate-700 mb-2">
-                <strong>Applicant Date of Birth:</strong> {dobInput}
-              </div>
-            )}
-
-            {eligibilityResult && (
-              <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200 print:mt-2 print:p-3 print:bg-white print:border-slate-300">
-                <h3 className="text-xl font-semibold text-blue-700 mb-2 print:text-xs print:text-blue-900">{eligibilityResult.category}</h3>
-                <p className="text-slate-600 mb-5 leading-relaxed print:text-xs print:mb-2">{eligibilityResult.message}</p>
-              </div>
-            )}
           </div>
 
           <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 max-w-4xl mx-auto mb-12 print:shadow-none print:border-none print:p-0 print:mb-4">
@@ -257,32 +248,6 @@ export default function Home() {
                 <button onClick={handleSearch} disabled={isSearchLoading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-4 px-10 rounded-full">
                     {isSearchLoading ? 'Scanning...' : 'Search Database'}
                 </button>
-            </div>
-
-            <div className="space-y-4 print:space-y-1">
-                <div className={`flex items-center gap-4 p-5 rounded-2xl border print:p-1 print:border-none ${selectedName2002 ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                    {selectedName2002 ? (
-                      <div className="flex items-center w-full text-xs">
-                        <span className="font-semibold text-slate-900 mr-2">2002 Voter List Record:</span>
-                        <span className="text-emerald-800 font-medium bg-emerald-100 px-3 py-1 rounded-full text-sm print:bg-none print:p-0 print:text-[11px] print:font-bold">✓ Verified Status: {selectedName2002}</span>
-                        <button onClick={() => {setSelectedName2002(null); setIsListed2002(false);}} className="ml-auto text-sm text-slate-400 hover:text-red-500 print:hidden">Clear</button>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-slate-600"><span className="font-semibold text-slate-900">2002 Voter List Status:</span> {isListed2002 ? "✓ Manually Confirmed Listed" : "⚠️ Unverified / Not Found"}</div>
-                    )}
-                </div>
-
-                <div className={`flex items-center gap-4 p-5 rounded-2xl border print:p-1 print:border-none ${selectedName2025 ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                    {selectedName2025 ? (
-                      <div className="flex items-center w-full text-xs">
-                        <span className="font-semibold text-slate-900 mr-2">2025 Voter List Record:</span>
-                        <span className="text-emerald-800 font-medium bg-emerald-100 px-3 py-1 rounded-full text-sm print:bg-none print:p-0 print:text-[11px] print:font-bold">✓ Verified Status: {selectedName2025}</span>
-                        <button onClick={() => {setSelectedName2025(null); setIsListed2025(false);}} className="ml-auto text-sm text-slate-400 hover:text-red-500 print:hidden">Clear</button>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-slate-600"><span className="font-semibold text-slate-900">2025 Voter List Status:</span> {isListed2025 ? "✓ Manually Confirmed Listed" : "⚠️ Unverified / Not Found"}</div>
-                    )}
-                </div>
             </div>
           </div>
 
