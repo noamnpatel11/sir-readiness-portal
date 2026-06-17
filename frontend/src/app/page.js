@@ -85,6 +85,7 @@ export default function Home() {
       localStorage.removeItem('listed2025');
       localStorage.removeItem('name2002');
       localStorage.removeItem('name2025');
+      window.location.reload();
     }
   };
 
@@ -140,14 +141,11 @@ export default function Home() {
     setErrors(errors.filter(err => !(err.rowIndex === rowIndex && err.field === fieldName)));
   };
 
-  // --- NEW: Handle Master Document Changes ---
+  // --- UPDATED: Handle Master Document Changes with Wipe Logic ---
   const handleMasterSelection = (index) => {
     setMasterDocIndex(index);
-    // If there is an old report showing, clear it so the user knows they must re-analyze
-    if (resultMessage || errors.length > 0) {
-      setErrors([]); 
-      setResultMessage("⚠️ Master Document changed. Please click 'Run Deep Grid Analysis' again to generate a new report.");
-    }
+    setErrors([]);      // Explicitly wipe errors
+    setResultMessage(""); // Explicitly wipe previous report text
   };
 
   const isErrorCell = (rowIndex, fieldName) => errors.some(err => err.rowIndex === rowIndex && err.field === fieldName);
@@ -320,7 +318,6 @@ export default function Home() {
                         
                         <td className="border-b border-r border-slate-300 p-0 text-center align-middle bg-slate-50 print:p-1 print:bg-white">
                           <div className="flex justify-center items-center w-full h-full p-4 print:p-0">
-                            {/* Triggers the new handleMasterSelection function! */}
                             <input 
                               type="radio" 
                               name="masterDocument" 
@@ -350,20 +347,23 @@ export default function Home() {
               </table>
             </div>
 
-            <div className="mt-8 flex flex-col sm:flex-row gap-4 print:hidden">
-              <button onClick={handleAnalyzeClick} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-4 px-6 rounded-full text-lg shadow-sm">
-                Run Deep Grid Analysis
-              </button>
-              <button onClick={handleExportPDF} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-4 px-6 rounded-full text-lg shadow-sm flex items-center justify-center gap-2">
-                Export Report to PDF
-              </button>
-            </div>
+            {/* --- FORCED RE-RENDER SECTION --- */}
+            <div key={masterDocIndex} className="mt-8">
+                <div className="flex flex-col sm:flex-row gap-4 print:hidden">
+                    <button onClick={handleAnalyzeClick} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-4 px-6 rounded-full text-lg shadow-sm">
+                        Run Deep Grid Analysis
+                    </button>
+                    <button onClick={handleExportPDF} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-4 px-6 rounded-full text-lg shadow-sm flex items-center justify-center gap-2">
+                        Export Report to PDF
+                    </button>
+                </div>
 
-            {resultMessage && (
-              <div className={`mt-6 p-5 rounded-2xl text-center font-semibold text-lg border print:mt-4 print:p-3 print:text-xs print:text-left ${resultMessage.includes("Error") || resultMessage.includes("WARNING") || resultMessage.includes("changed") ? "bg-red-50 text-red-600 border-red-200 print:border-red-500" : "bg-green-50 text-emerald-700 border-green-200 print:border-slate-400"}`}>
-                <strong className="hidden print:inline">Analysis Findings: </strong> {resultMessage}
-              </div>
-            )}
+                {resultMessage && (
+                    <div className={`mt-6 p-5 rounded-2xl text-center font-semibold text-lg border print:mt-4 print:p-3 print:text-xs print:text-left ${resultMessage.includes("Error") || resultMessage.includes("WARNING") || resultMessage.includes("changed") ? "bg-red-50 text-red-600 border-red-200 print:border-red-500" : "bg-green-50 text-emerald-700 border-green-200 print:border-slate-400"}`}>
+                        <strong className="hidden print:inline">Analysis Findings: </strong> {resultMessage}
+                    </div>
+                )}
+            </div>
           </div>
         </div>
 
